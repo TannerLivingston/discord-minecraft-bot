@@ -1,11 +1,7 @@
-import { CHANNEL_IDS, config } from './config';
+import { discordConfig, appConfig, getChannelIdValue, ChannelIdKey, ChannelIds } from './config';
 import { Client, IntentsBitField, TextChannel } from 'discord.js';
 import axios from 'axios';
 import * as fs from 'fs'; 
-
-const minecraftPort = '25589';
-const intervalMilliseconds = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
-const ipFilePath = './last_saved_ip.txt';
 
 const client = new Client({
     intents: [
@@ -15,13 +11,12 @@ const client = new Client({
     ]
 });
 
-client.login(config.DISCORD_TOKEN);
-
+client.login(discordConfig.DISCORD_TOKEN);
 
 client.on('ready', (c) => {
     console.log(`✅ ${c.user.tag} is online`);
-    handleIPCheck();
-    scheduleNextIPLookup();  // Start the scheduled task loop when the bot is ready
+    ipLookupRoutine(); // Perform an initial check and set things straight in case the bot has been offline for a while
+    scheduleNextIpLookupRoutine();  // Start the scheduled task loop when the bot is ready
 });
 
 client.on('messageCreate', async (message) => {
@@ -30,30 +25,35 @@ client.on('messageCreate', async (message) => {
     }
 
     if (message.content === 'ip') {
-        const ip = await getExternalIpAddress();
-        message.reply(`The server IP Address: ${ip}:${minecraftPort}`);
+        try {
+            const [ip, ipChanged] = await ipCheck();
+            if (ipChanged) {
+                await sendMessageToChannel(`IP ADDRESS CHANGED! New address:\n${ip}:${appConfig.MINECRAFT_PORT}`, ChannelIds.SERVER_ADDRESS);
+            }
+            else {
+                await sendMessageToChannel(`The IP address has not changed. The address is still:\n${ip}:${appConfig.MINECRAFT_PORT}`, ChannelIds.SERVER_ADDRESS);
+            }
+        }
+        catch (error) {
+            // Do nothing
+        }
     }
 });
 
 async function getExternalIpAddress(): Promise<string> {
-    try {
-        const response = await axios.get('https://api.ipify.org?format=json');
-        return response.data.ip;
-    } catch (error) {
-        console.log('Error fetching the external IP address:', error);
-        throw error;
-    }
+    const response = await axios.get('https://api.ipify.org?format=json');
+    return response.data.ip;
 }
 
-async function checkAndUpdateIpFile(newIp: string): Promise<boolean> {
+async function checkIfIpAddressChanged(newIp: string): Promise<boolean> {
     try {
         let lastIp = '';
-        if (fs.existsSync(ipFilePath)) {
-            lastIp = fs.readFileSync(ipFilePath, 'utf8').trim();
+        if (fs.existsSync(appConfig.IP_FILE_PATH)) {
+            lastIp = fs.readFileSync(appConfig.IP_FILE_PATH, 'utf8').trim();
         }
 
         if (lastIp !== newIp) {
-            fs.writeFileSync(ipFilePath, newIp, 'utf8');
+            fs.writeFileSync(appConfig.IP_FILE_PATH, newIp, 'utf8');
             return true;
         }
 
@@ -65,56 +65,59 @@ async function checkAndUpdateIpFile(newIp: string): Promise<boolean> {
     }
 }
 
-async function ipLookupSchedule(): Promise<string> {
+// Runs the IP lookup on a schedule
+async function scheduleNextIpLookupRoutine() {
+    setTimeout(async () => {
+        ipLookupRoutine();
+        scheduleNextIpLookupRoutine(); // Schedule the next run
+    }, appConfig.IP_POLL_MILLISECONDS);
+}
+
+// Lookup IP and send message only if it has changed
+async function ipLookupRoutine() {
     try {
-        console.log('Executing IP lookup...');
+        const [ip, ipChanged] = await ipCheck();
+        if (ipChanged) {
+            await sendMessageToChannel(`IP ADDRESS CHANGED! New address:\n${ip}:${appConfig.MINECRAFT_PORT}`, ChannelIds.SERVER_ADDRESS);
+        }
+    }
+    catch (error) {
+        console.log(`Scheduled IP lookup failed.`);
+    }
+}
+
+// Returns the most up-to-date IP address, and true if it has changed
+async function ipCheck(): Promise<[ip: string, ipChanged: boolean]> {
+    try {
         const ip = await getExternalIpAddress();
-        console.log('External IP scheduled task completed. IP: ', ip);
-        return ip;
+        if (await checkIfIpAddressChanged(ip)) {
+            console.log('IP address has changed! IP updated!');
+            return [ip, true];
+        }
+        else {
+            console.log('IP address has not changed.');
+            return [ip, false];
+        }
     } catch (error) {
-        console.error('Error in scheduled IP lookup:', error);
+        console.log(`Couldn't complete IP lookup.`, error);
         throw error;
     }
 }
 
-async function scheduleNextIPLookup() {
-    setTimeout(async () => {
-        await handleIPCheck();
-        scheduleNextIPLookup(); // Schedule the next run
-    }, intervalMilliseconds);
-}
-
-async function handleIPCheck() {
+async function sendMessageToChannel(message: string, channelName: ChannelIdKey) {
     try {
-        const ip = await ipLookupSchedule(); // Perform the task
-        if (await checkAndUpdateIpFile(ip)) {
-            console.log('IP address has changed! IP updated!');
-            await pinMessage(`The current IP Address: ${ip}:${minecraftPort}`);
-        }
-        else {
-            console.log('IP address has not changed.');
-        }
-    } catch (error) {
-        console.log(`Couldn't complete Scheduled IP lookup.`);
-    }
-}
-
-async function pinMessage(message: string) {
-    try {
-        const channel = client.channels.cache.get(CHANNEL_IDS.GENERAL) as TextChannel;
+        const channel = client.channels.cache.get(getChannelIdValue(channelName)) as TextChannel;
         if (!channel) {
-            console.error('Bad channel!');
+            console.error(`Bad channel! Can't post message to ${channelName}!`);
             return;
         }
 
         const sentMessage = await channel.send({
             content: message,
-            flags: [4096] // send message silently
+            //flags: [4096] // send message silently
         });
 
-        await sentMessage.pin();
-        console.log('IP pinned');
     } catch (error) {
-        console.error('Failed to send and pin message.', error);
+        console.error(`Failed to send message to channel: ${channelName}!`, error);
     }
 }
