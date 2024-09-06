@@ -1,4 +1,4 @@
-import { Client, Message, TextChannel } from "discord.js";
+import { Client, Message, MessageFlagsBitField, TextChannel } from "discord.js";
 import { ipCheck } from './ipChecker';
 import { ChannelIds, appConfig, getChannelIdValue, ChannelIdKey } from './config';
 import { logError } from "./utils";
@@ -41,7 +41,7 @@ export async function sendMessageToChannel(message: string, channelName: Channel
         return;
       }
   
-      await channel.send({ content: message, flags: [4096] });
+      await channel.send({ content: message });
     } catch (error) {
         logError(`Failed to send message to channel: ${channelName}!`, error);
     }
