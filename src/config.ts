@@ -28,7 +28,7 @@ const ChannelId = {
 
 export enum ChannelIds {
     GENERAL = 'GENERAL',
-    SERVER_ADDRESS = 'SERVER_ADDRESS'
+    SERVER_ADDRESS = 'SERVER_ADDRESS',
 }
 
 export type ChannelIdKey = 'GENERAL' | 'SERVER_ADDRESS';
