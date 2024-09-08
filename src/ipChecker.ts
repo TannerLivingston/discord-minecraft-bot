@@ -4,6 +4,9 @@ import { Client } from 'discord.js';
 import { sendMessageToChannel } from './messageHandlers';
 import { checkIfStoredValueHasChanged, logError, logMessage } from './utils';
 
+const bedTime = 8; // 8 AM
+const wakeTime = 21; // 9 PM
+
 export async function scheduleIpLookup(client: Client) {
     await ipLookupJob(client); // run the job once right away to set things straight in case the bot was offline for a long time
     setInterval(async () => ipLookupJob(client), appConfig.IP_POLL_MILLISECONDS);
@@ -11,6 +14,11 @@ export async function scheduleIpLookup(client: Client) {
 
 // Look up external IP Address and send a message if it has changed.
 async function ipLookupJob(client: Client) {
+    const hourOfDay = new Date().getHours();
+    if (hourOfDay >= bedTime || hourOfDay <= wakeTime) {
+        logMessage(`Didn't perform IP lookup in the middle of the night.`)
+        return;
+    }
     try {
         const [ip, ipChanged] = await ipCheck();
         if (ipChanged) {
