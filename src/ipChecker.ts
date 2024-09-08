@@ -4,8 +4,8 @@ import { Client } from 'discord.js';
 import { sendMessageToChannel } from './messageHandlers';
 import { checkIfStoredValueHasChanged, logError, logMessage } from './utils';
 
-const bedTime = 8; // 8 AM
-const wakeTime = 21; // 9 PM
+const wakeTime = 8; // 8 AM
+const bedTime = 21; // 9 PM
 
 export async function scheduleIpLookup(client: Client) {
     await ipLookupJob(client); // run the job once right away to set things straight in case the bot was offline for a long time
