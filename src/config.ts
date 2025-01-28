@@ -8,12 +8,15 @@ const { DISCORD_TOKEN,
         IP_POLL_MILLISECONDS,
         IP_FILE_PATH,
         DISCORD_CHANNEL_GENERAL,
-        DISCORD_CHANNEL_SERVER_ADDRESS
+        DISCORD_CHANNEL_SERVER_ADDRESS,
+        MINECRAFT_ADMIN_DISCORD_IDS,
 } = process.env;
 
 if (!DISCORD_TOKEN || !DISCORD_CLIENT_ID) {
     throw new Error("Missing required environment variables: DISCORD_TOKEN or DISCORD_CLIENT_ID");
 }
+
+export const MINECRAFT_ADMIN_DISCORD_IDS_ARRAY = MINECRAFT_ADMIN_DISCORD_IDS?.split(',') || [];
 
 // Settings to connect to Discord
 export const discordConfig = {

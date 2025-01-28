@@ -1,0 +1,15 @@
+# Discord API Configuration
+DISCORD_TOKEN=
+DISCORD_CLIENT_ID=
+
+# Application Settings
+MINECRAFT_PORT=25565
+IP_POLL_MILLISECONDS=10000  # 6 hours in milliseconds
+IP_FILE_PATH=./last_saved_ip.txt
+
+# Channel IDs
+DISCORD_CHANNEL_GENERAL=
+DISCORD_CHANNEL_SERVER_ADDRESS=
+
+# Discord IDs for Minecraft server Admins (comma-separated)
+MINECRAFT_ADMIN_DISCORD_IDS=
