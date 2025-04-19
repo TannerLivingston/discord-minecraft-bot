@@ -26,4 +26,14 @@ export async function authenticateRconServer(): Promise<boolean> {
     }
 }
 
+export async function restartRconServer(): Promise<boolean> {
+    logMessage('Manually restarting RCON server...');
+    if (rconServer) {
+        await rconServer.disconnect();
+        logMessage('Disconnected from RCON server');
+    }
+    
+    return await authenticateRconServer();
+}
+
 export { rconServer };
