@@ -2,7 +2,7 @@ import { Client, Message, TextChannel } from 'discord.js';
 import { ipCheck } from './ipChecker';
 import { ChannelIds, appConfig, getChannelIdValue, ChannelIdKey } from './config';
 import { logError } from "./utils";
-import { rconServer, restartRconServer } from './rcon';
+import { sendRconCommand } from './rcon';
 import { MINECRAFT_ADMIN_DISCORD_IDS_ARRAY } from './config';
 
 const emojiRegex = /(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)/gu;
@@ -84,27 +84,14 @@ async function handleEmojiMessage(message: Message<boolean>) {
 }
 
 async function handleRconMessage(message: Message<boolean>) {
-    if (!rconServer?.isAuthenticated() || 
-        !message.content.toLowerCase().startsWith('rcon') || 
+    if (!message.content.toLowerCase().startsWith('rcon') || 
         !MINECRAFT_ADMIN_DISCORD_IDS_ARRAY.includes(message.author.id)) {
         return;
     }
 
     const rconCommand = message.content.substring(5);
     try {
-        // special cases (my own commands)
-        if (rconCommand === 'restart rcon') {
-            if (await restartRconServer()) {
-                await message.reply({ content: 'Restarted RCON server connection', flags: silentFlag });
-            }
-            else {
-                await message.reply({ content: 'Failed to restart RCON server connection', flags: silentFlag });
-            }
-            return;
-        }
-
-        // handle ordinary rcon commands
-        const response = await rconServer.execute(rconCommand);
+        const response = await sendRconCommand(rconCommand);
         if (response) {
             if (typeof response === 'string') {
                 await message.reply({ content: response, flags: silentFlag });

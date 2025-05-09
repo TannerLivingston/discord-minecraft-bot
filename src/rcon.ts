@@ -6,34 +6,46 @@ const pass = RCON_CONFIG.RCON_PASSWORD;
 const host = RCON_CONFIG.RCON_HOST;
 const port = RCON_CONFIG.RCON_PORT;
 
-let rconServer: Rcon;
-
-export async function authenticateRconServer(): Promise<boolean> {
+async function authenticateRconServer(): Promise<Rcon | undefined> {
     if (!host || !port || !pass) {
         logMessage('RCON server not configured');
-        return false;
+        return undefined;
     }
-    
-    rconServer = new Rcon({ host, port });
+
+    const rconServer = new Rcon({ host, port });
 
     try {
         await rconServer.authenticate(pass);
         logMessage('Authenticated RCON server');
-        return true;
+        return rconServer;
     } catch (error) {
         logError('Failed to authenticate RCON server', error);
-        return false;
+        return undefined;
     }
 }
 
-export async function restartRconServer(): Promise<boolean> {
-    logMessage('Manually restarting RCON server...');
-    if (rconServer) {
+async function disconnectRconServer(rconServer: Rcon): Promise<void> {
+    try {
         await rconServer.disconnect();
         logMessage('Disconnected from RCON server');
+    } catch (error) {
+        logError('Failed to disconnect from RCON server', error);
     }
-    
-    return await authenticateRconServer();
 }
 
-export { rconServer };
+// Authenticate the RCON server and send a command
+export async function sendRconCommand(command: string): Promise<string | boolean> {
+    const rconServer = await authenticateRconServer();
+    if (rconServer) {
+        try {
+            const response = await rconServer.execute(command);
+            disconnectRconServer(rconServer);
+            return response;
+        } catch (error) {
+            logError('Failed to execute RCON command', error);
+            return false;
+        }
+    }
+    logMessage('Could not send RCON command, not authenticated');
+    return false;
+}
